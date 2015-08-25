@@ -1,4 +1,4 @@
-/* backbone.viewstack - v0.9.5 - MIT */
+/* backbone.viewstack - v0.9.6 - MIT */
 /* Manage views & transitions in Backbone without the boilerplate */
 /* https://github.com/Creative-Licence-Digital/backbone.viewstack */
 var __hasProp = {}.hasOwnProperty,
@@ -118,6 +118,7 @@ var __hasProp = {}.hasOwnProperty,
         options = {};
       }
       key = options.key || name;
+      prevView = this.stack[this.stack.length - 1];
       if (this.views[key] != null) {
         nextView = this.views[key];
       } else {
@@ -139,8 +140,7 @@ var __hasProp = {}.hasOwnProperty,
           }
         }
       }
-      if (nextView.__key !== ((options != null ? options.key : void 0) || name)) {
-        prevView = this.stack[this.stack.length - 1];
+      if (!prevView || prevView.__key !== key) {
         isPush = this.stack.indexOf(nextView) < 0;
         if ((prevView != null ? (_ref1 = prevView.stack) != null ? _ref1.indexOf(name) : void 0 : void 0) > -1) {
           isPush = false;
@@ -178,7 +178,10 @@ var __hasProp = {}.hasOwnProperty,
           return this.trigger("show", nextView, options);
         }
       } else {
-        return typeof nextView.show === "function" ? nextView.show(options) : void 0;
+        if (typeof nextView.show === "function") {
+          nextView.show(options);
+        }
+        return nextView.delegateEvents().$el.show().addClass("active");
       }
     };
 
