@@ -1,4 +1,4 @@
-/* backbone.viewstack - v0.9.6 - MIT */
+/* backbone.viewstack - v0.9.7 - MIT */
 /* Manage views & transitions in Backbone without the boilerplate */
 /* https://github.com/Creative-Licence-Digital/backbone.viewstack */
 var __hasProp = {}.hasOwnProperty,
@@ -161,7 +161,7 @@ var __hasProp = {}.hasOwnProperty,
           this.transform = this.slideTransform;
         }
         if (isPush || this.stack.length === 0 && !this.preventTransition) {
-          return this.pushView(nextView);
+          this.pushView(nextView);
         } else {
           if (this.willShowDialog) {
             prevView = this.removeDialog(nextView) || prevView;
@@ -175,8 +175,8 @@ var __hasProp = {}.hasOwnProperty,
           if (!options.transition) {
             this.willCustomPush = false;
           }
-          return this.trigger("show", nextView, options);
         }
+        return this.trigger("show", nextView, options);
       } else {
         if (typeof nextView.show === "function") {
           nextView.show(options);
