@@ -13,6 +13,8 @@ do ->
       bodyClass: ".view-body"
       ms: 300
       overwrite: true
+      slideStartPosition: 40
+      slideCompletionRatio: 0.5
 
     el: "#views"
 
@@ -250,7 +252,7 @@ do ->
 
       return events
 
-    # When we slide from within the first 40 pixels of the screen, we start the
+    # When we slide from within the `slideStartPosition`, we start the
     # view transitions if the stack contains enough views. We stop any CSS
     # transitions on the two views, and ensure that they are visible. We'll
     # also treat the first touch as a move event to start the transitions.
@@ -267,8 +269,7 @@ do ->
 
       @offset ?= @$el.offset()
 
-
-      if _e.pageX - @offset.left < 40
+      if _e.pageX - @offset.left < @slideStartPosition
         if inPrevStack
           index = prevView.stack.indexOf(prevView.__key) - 1
           nextView = @views[prevView.stack[index]]
@@ -342,7 +343,7 @@ do ->
         next = @slide.next
         prev = @slide.prev
 
-        if @slide.ratio > 0.5
+        if @slide.ratio > @slideCompletionRatio
           @transform prev, @endRatio(true), true
           @transform next, 0, true
           @preventTransition = true
