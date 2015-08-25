@@ -309,6 +309,7 @@ do ->
           @transform = @slideTransform
           @slide.next.$el.show()
           @slide.prev.$el.show()
+          @trigger("slidestart")
 
         else if Math.abs(_e.pageY - @slide.startY) > 20
           @onEnd()
@@ -361,6 +362,8 @@ do ->
           @transform next, @endRatio(false), false
           @cleanup(@slide.prev.$el)
           prev.delegateEvents()
+
+        @trigger("slideend")
 
       @slide = null
 
