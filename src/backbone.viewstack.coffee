@@ -267,7 +267,6 @@ do ->
 
       @offset ?= @$el.offset()
 
-      @hasSlid = false
 
       if _e.pageX - @offset.left < 40
         if inPrevStack
@@ -284,6 +283,7 @@ do ->
           startY: _e.pageY
           prev: prevView
           next: nextView
+          hasSlid: false
 
         @onMove(e)
 
@@ -298,10 +298,10 @@ do ->
 
       _e = if isTouch then e.touches[0] else e
 
-      if not @hasSlid
+      if not @slide.hasSlid
         if Math.abs(_e.pageX - @offset.left - @slide.startX) > 10
           window.clearTimeout @transitionOutTimeout
-          @hasSlid = true
+          @slide.hasSlid = true
           @slide.prev.undelegateEvents()
           @slide.next.undelegateEvents()
           @transitionView @slide.prev, false
@@ -314,7 +314,7 @@ do ->
         else if Math.abs(_e.pageY - @slide.startY) > 20
           @onEnd()
 
-      if @hasSlid
+      if @slide.hasSlid
         e.stopPropagation()
 
         @slide.ratio =
@@ -337,7 +337,7 @@ do ->
       @transitionView @slide.prev, true
       @transitionView @slide.next, true
 
-      if @hasSlid
+      if @slide.hasSlid
         e.stopPropagation()
         next = @slide.next
         prev = @slide.prev
