@@ -108,7 +108,7 @@ do ->
             @stack.push view
 
       # Only go to the trouble if this view isn't already active
-      if nextView.__key isnt (options?.key or viewName)
+      if nextView.__key isnt (options?.key or name)
         prevView = @stack[@stack.length - 1]
 
         # Assume we're pushing if the new view is already in the stack.
