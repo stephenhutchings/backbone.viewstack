@@ -81,6 +81,9 @@ do ->
         else
           @show(@stack[@stack.length - 2].__key)
 
+    getCurrentView: ->
+      _.last(@stack)
+
     # Get the view from the dictionary, or create it if it doesn't exist.
     # Decide whether to pop or push the view, and build the stack if its the
     # first run and a stack is declared on the new view being created.
