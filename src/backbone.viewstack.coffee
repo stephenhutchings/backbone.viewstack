@@ -107,48 +107,53 @@ do ->
             view.$el.css zIndex: i + 1
             @stack.push view
 
-      nextView.show?(options)
+      # Only go to the trouble if this view isn't already active
+      if nextView.__key isnt (options?.key or viewName)
+        prevView = @stack[@stack.length - 1]
 
-      prevView = @stack[@stack.length - 1]
+        # Assume we're pushing if the new view is already in the stack.
+        isPush = @stack.indexOf(nextView) < 0
 
-      # Assume we're pushing if the new view is already in the stack.
-      isPush = @stack.indexOf(nextView) < 0
+        # We're popping if the previous view explicitly declares so.
+        if prevView?.stack?.indexOf(name) > -1
+          isPush = false
 
-      # We're popping if the previous view explicitly declares so.
-      if prevView?.stack?.indexOf(name) > -1
-        isPush = false
+        if options.isDialog
+          @willShowDialog = true
 
-      if options.isDialog
-        @willShowDialog = true
+        # Custom transitions means we remove swiping.
+        if options.transition
+          @undelegateEvents()
+        else
+          @delegateEvents()
 
-      # Custom transitions means we remove swiping.
-      if options.transition
-        @undelegateEvents()
+        # Set the transition to be used
+        if options.transition
+          @willCustomPush = true
+          @transform = @["#{options.transition}Transform"]
+        else if not @willCustomPush
+          @willCustomPush = false
+          @transform = @slideTransform
+
+        if isPush or @stack.length is 0 and not @preventTransition
+          @pushView(nextView)
+
+        else
+          if @willShowDialog
+            prevView = @removeDialog(nextView) or prevView
+
+          @stack =
+            @stack.slice(0, @stack.indexOf(nextView) + 1).concat(prevView)
+
+          # Ensure the view we pop to is underneath in the stack
+          @stack.unshift(nextView) if @stack.length is 1
+          @popView()
+          @willHideDialog = false
+          @willCustomPush = false unless options.transition
+          @trigger("show", nextView, options)
+
       else
-        @delegateEvents()
-
-      # Set the transition to be used
-      if options.transition
-        @willCustomPush = true
-        @transform = @["#{options.transition}Transform"]
-      else if not @willCustomPush
-        @willCustomPush = false
-        @transform = @slideTransform
-
-      if isPush or @stack.length is 0 and not @preventTransition
-        @pushView(nextView)
-
-      else
-        if @willShowDialog
-          prevView = @removeDialog(nextView) or prevView
-
-        @stack = @stack.slice(0, @stack.indexOf(nextView) + 1).concat(prevView)
-
-        # Ensure the view we pop to is underneath in the stack
-        @stack.unshift(nextView) if @stack.length is 1
-        @popView()
-        @willHideDialog = false
-        @willCustomPush = false unless options.transition
+        nextView.show?(options)
 
     # Get the last view in the stack, push the new view and activate it.
     pushView: (view) ->
