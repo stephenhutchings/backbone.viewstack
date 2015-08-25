@@ -154,6 +154,7 @@ do ->
 
       else
         nextView.show?(options)
+        nextView.delegateEvents().$el.show().addClass("active")
 
     # Get the last view in the stack, push the new view and activate it.
     pushView: (view) ->
