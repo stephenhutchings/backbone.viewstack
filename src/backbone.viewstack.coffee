@@ -255,7 +255,7 @@ do ->
       events[if isTouch then "touchstart" else "mousedown"] = "onStart"
       events[if isTouch then "touchmove" else "mousemove"] = "onMove"
       events[if isTouch then "touchend" else "mouseup"] = "onEnd"
-      events[if isTouch then "touchcancel" else "mouseleave"] = "onEnd"
+      events["touchcancel"] = "onEnd" if isTouch
 
       return events
 
