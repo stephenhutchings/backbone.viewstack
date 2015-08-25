@@ -1,4 +1,4 @@
-/* backbone.viewstack - v0.9.3 - MIT */
+/* backbone.viewstack - v0.9.5 - MIT */
 /* Manage views & transitions in Backbone without the boilerplate */
 /* https://github.com/Creative-Licence-Digital/backbone.viewstack */
 var __hasProp = {}.hasOwnProperty,
@@ -139,8 +139,7 @@ var __hasProp = {}.hasOwnProperty,
           }
         }
       }
-      console.log(nextView.__key);
-      if (nextView.__key !== ((options != null ? options.key : void 0) || viewName)) {
+      if (nextView.__key !== ((options != null ? options.key : void 0) || name)) {
         prevView = this.stack[this.stack.length - 1];
         isPush = this.stack.indexOf(nextView) < 0;
         if ((prevView != null ? (_ref1 = prevView.stack) != null ? _ref1.indexOf(name) : void 0 : void 0) > -1) {
