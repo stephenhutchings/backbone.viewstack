@@ -150,7 +150,8 @@ do ->
           @popView()
           @willHideDialog = false
           @willCustomPush = false unless options.transition
-          @trigger("show", nextView, options)
+
+        @trigger("show", nextView, options)
 
       else
         nextView.show?(options)
