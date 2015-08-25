@@ -1,42 +1,59 @@
-(function(/*! Brunch !*/) {
+(function() {
   'use strict';
 
-  var globals = typeof window !== 'undefined' ? window : global;
+  var globals = typeof window === 'undefined' ? global : window;
   if (typeof globals.require === 'function') return;
 
   var modules = {};
   var cache = {};
+  var has = ({}).hasOwnProperty;
 
-  var has = function(object, name) {
-    return ({}).hasOwnProperty.call(object, name);
+  var aliases = {};
+
+  var endsWith = function(str, suffix) {
+    return str.indexOf(suffix, str.length - suffix.length) !== -1;
   };
 
-  var expand = function(root, name) {
-    var results = [], parts, part;
-    if (/^\.\.?(\/|$)/.test(name)) {
-      parts = [root, name].join('/').split('/');
-    } else {
-      parts = name.split('/');
-    }
-    for (var i = 0, length = parts.length; i < length; i++) {
-      part = parts[i];
-      if (part === '..') {
-        results.pop();
-      } else if (part !== '.' && part !== '') {
-        results.push(part);
+  var unalias = function(alias, loaderPath) {
+    var start = 0;
+    if (loaderPath) {
+      if (loaderPath.indexOf('components/' === 0)) {
+        start = 'components/'.length;
+      }
+      if (loaderPath.indexOf('/', start) > 0) {
+        loaderPath = loaderPath.substring(start, loaderPath.indexOf('/', start));
       }
     }
-    return results.join('/');
+    var result = aliases[alias + '/index.js'] || aliases[loaderPath + '/deps/' + alias + '/index.js'];
+    if (result) {
+      return 'components/' + result.substring(0, result.length - '.js'.length);
+    }
+    return alias;
   };
 
+  var expand = (function() {
+    var reg = /^\.\.?(\/|$)/;
+    return function(root, name) {
+      var results = [], parts, part;
+      parts = (reg.test(name) ? root + '/' + name : name).split('/');
+      for (var i = 0, length = parts.length; i < length; i++) {
+        part = parts[i];
+        if (part === '..') {
+          results.pop();
+        } else if (part !== '.' && part !== '') {
+          results.push(part);
+        }
+      }
+      return results.join('/');
+    };
+  })();
   var dirname = function(path) {
     return path.split('/').slice(0, -1).join('/');
   };
 
   var localRequire = function(path) {
     return function(name) {
-      var dir = dirname(path);
-      var absolute = expand(dir, name);
+      var absolute = expand(dirname(path), name);
       return globals.require(absolute, path);
     };
   };
@@ -51,21 +68,26 @@
   var require = function(name, loaderPath) {
     var path = expand(name, '.');
     if (loaderPath == null) loaderPath = '/';
+    path = unalias(name, loaderPath);
 
-    if (has(cache, path)) return cache[path].exports;
-    if (has(modules, path)) return initModule(path, modules[path]);
+    if (has.call(cache, path)) return cache[path].exports;
+    if (has.call(modules, path)) return initModule(path, modules[path]);
 
     var dirIndex = expand(path, './index');
-    if (has(cache, dirIndex)) return cache[dirIndex].exports;
-    if (has(modules, dirIndex)) return initModule(dirIndex, modules[dirIndex]);
+    if (has.call(cache, dirIndex)) return cache[dirIndex].exports;
+    if (has.call(modules, dirIndex)) return initModule(dirIndex, modules[dirIndex]);
 
     throw new Error('Cannot find module "' + name + '" from '+ '"' + loaderPath + '"');
   };
 
-  var define = function(bundle, fn) {
+  require.alias = function(from, to) {
+    aliases[to] = from;
+  };
+
+  require.register = require.define = function(bundle, fn) {
     if (typeof bundle === 'object') {
       for (var key in bundle) {
-        if (has(bundle, key)) {
+        if (has.call(bundle, key)) {
           modules[key] = bundle[key];
         }
       }
@@ -74,21 +96,18 @@
     }
   };
 
-  var list = function() {
+  require.list = function() {
     var result = [];
     for (var item in modules) {
-      if (has(modules, item)) {
+      if (has.call(modules, item)) {
         result.push(item);
       }
     }
     return result;
   };
 
+  require.brunch = true;
   globals.require = require;
-  globals.require.define = define;
-  globals.require.register = define;
-  globals.require.list = list;
-  globals.require.brunch = true;
 })();
 /**
  * @license
@@ -158,7 +177,9 @@ var __hasProp = {}.hasOwnProperty,
       headClass: ".view-head",
       bodyClass: ".view-body",
       ms: 300,
-      overwrite: true
+      overwrite: true,
+      slideStartPosition: 40,
+      slideCompletionRatio: 0.5
     };
 
     ViewStack.prototype.el = "#views";
@@ -239,6 +260,10 @@ var __hasProp = {}.hasOwnProperty,
       }
     };
 
+    ViewStack.prototype.getCurrentView = function() {
+      return _.last(this.stack);
+    };
+
     ViewStack.prototype.show = function(name, options) {
       var i, isPush, key, nextView, prevView, view, viewClass, _i, _len, _name, _ref, _ref1;
       if (options == null) {
@@ -266,44 +291,47 @@ var __hasProp = {}.hasOwnProperty,
           }
         }
       }
-      if (typeof nextView.show === "function") {
-        nextView.show(options);
-      }
-      prevView = this.stack[this.stack.length - 1];
-      isPush = this.stack.indexOf(nextView) < 0;
-      if ((prevView != null ? (_ref1 = prevView.stack) != null ? _ref1.indexOf(name) : void 0 : void 0) > -1) {
-        isPush = false;
-      }
-      if (options.isDialog) {
-        this.willShowDialog = true;
-      }
-      if (options.transition) {
-        this.undelegateEvents();
+      console.log(nextView.__key);
+      if (nextView.__key !== ((options != null ? options.key : void 0) || viewName)) {
+        prevView = this.stack[this.stack.length - 1];
+        isPush = this.stack.indexOf(nextView) < 0;
+        if ((prevView != null ? (_ref1 = prevView.stack) != null ? _ref1.indexOf(name) : void 0 : void 0) > -1) {
+          isPush = false;
+        }
+        if (options.isDialog) {
+          this.willShowDialog = true;
+        }
+        if (options.transition) {
+          this.undelegateEvents();
+        } else {
+          this.delegateEvents();
+        }
+        if (options.transition) {
+          this.willCustomPush = true;
+          this.transform = this["" + options.transition + "Transform"];
+        } else if (!this.willCustomPush) {
+          this.willCustomPush = false;
+          this.transform = this.slideTransform;
+        }
+        if (isPush || this.stack.length === 0 && !this.preventTransition) {
+          return this.pushView(nextView);
+        } else {
+          if (this.willShowDialog) {
+            prevView = this.removeDialog(nextView) || prevView;
+          }
+          this.stack = this.stack.slice(0, this.stack.indexOf(nextView) + 1).concat(prevView);
+          if (this.stack.length === 1) {
+            this.stack.unshift(nextView);
+          }
+          this.popView();
+          this.willHideDialog = false;
+          if (!options.transition) {
+            this.willCustomPush = false;
+          }
+          return this.trigger("show", nextView, options);
+        }
       } else {
-        this.delegateEvents();
-      }
-      if (options.transition) {
-        this.willCustomPush = true;
-        this.transform = this["" + options.transition + "Transform"];
-      } else if (!this.willCustomPush) {
-        this.willCustomPush = false;
-        this.transform = this.slideTransform;
-      }
-      if (isPush || this.stack.length === 0 && !this.preventTransition) {
-        return this.pushView(nextView);
-      } else {
-        if (this.willShowDialog) {
-          prevView = this.removeDialog(nextView) || prevView;
-        }
-        this.stack = this.stack.slice(0, this.stack.indexOf(nextView) + 1).concat(prevView);
-        if (this.stack.length === 1) {
-          this.stack.unshift(nextView);
-        }
-        this.popView();
-        this.willHideDialog = false;
-        if (!options.transition) {
-          return this.willCustomPush = false;
-        }
+        return typeof nextView.show === "function" ? nextView.show(options) : void 0;
       }
     };
 
@@ -423,8 +451,7 @@ var __hasProp = {}.hasOwnProperty,
       if (this.offset == null) {
         this.offset = this.$el.offset();
       }
-      this.hasSlid = false;
-      if (_e.pageX - this.offset.left < 40) {
+      if (_e.pageX - this.offset.left < this.slideStartPosition) {
         if (inPrevStack) {
           index = prevView.stack.indexOf(prevView.__key) - 1;
           nextView = this.views[prevView.stack[index]];
@@ -441,7 +468,8 @@ var __hasProp = {}.hasOwnProperty,
           startX: _e.pageX - this.offset.left,
           startY: _e.pageY,
           prev: prevView,
-          next: nextView
+          next: nextView,
+          hasSlid: false
         };
         return this.onMove(e);
       }
@@ -456,10 +484,10 @@ var __hasProp = {}.hasOwnProperty,
         e.preventDefault();
       }
       _e = isTouch ? e.touches[0] : e;
-      if (!this.hasSlid) {
+      if (!this.slide.hasSlid) {
         if (Math.abs(_e.pageX - this.offset.left - this.slide.startX) > 10) {
           window.clearTimeout(this.transitionOutTimeout);
-          this.hasSlid = true;
+          this.slide.hasSlid = true;
           this.slide.prev.undelegateEvents();
           this.slide.next.undelegateEvents();
           this.transitionView(this.slide.prev, false);
@@ -467,11 +495,12 @@ var __hasProp = {}.hasOwnProperty,
           this.transform = this.slideTransform;
           this.slide.next.$el.show();
           this.slide.prev.$el.show();
+          this.trigger("slidestart");
         } else if (Math.abs(_e.pageY - this.slide.startY) > 20) {
           this.onEnd();
         }
       }
-      if (this.hasSlid) {
+      if (this.slide.hasSlid) {
         e.stopPropagation();
         this.slide.ratio = Math.min(Math.max((_e.pageX - this.offset.left - this.slide.startX) / this.offset.width, 0), 1);
         this.transform(this.slide.prev, this.slide.ratio, true);
@@ -486,11 +515,11 @@ var __hasProp = {}.hasOwnProperty,
       }
       this.transitionView(this.slide.prev, true);
       this.transitionView(this.slide.next, true);
-      if (this.hasSlid) {
+      if (this.slide.hasSlid) {
         e.stopPropagation();
         next = this.slide.next;
         prev = this.slide.prev;
-        if (this.slide.ratio > 0.5) {
+        if (this.slide.ratio > this.slideCompletionRatio) {
           this.transform(prev, this.endRatio(true), true);
           this.transform(next, 0, true);
           this.preventTransition = true;
@@ -513,6 +542,7 @@ var __hasProp = {}.hasOwnProperty,
           this.cleanup(this.slide.prev.$el);
           prev.delegateEvents();
         }
+        this.trigger("slideend");
       }
       return this.slide = null;
     };
@@ -596,6 +626,215 @@ var __hasProp = {}.hasOwnProperty,
 
   })(Backbone.View);
 })();
+
+(function(e){if("function"==typeof bootstrap)bootstrap("jade",e);else if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else if("undefined"!=typeof ses){if(!ses.ok())return;ses.makeJade=e}else"undefined"!=typeof window?window.jade=e():global.jade=e()})(function(){var define,ses,bootstrap,module,exports;
+return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+
+/*!
+ * Jade - runtime
+ * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+ * MIT Licensed
+ */
+
+/**
+ * Lame Array.isArray() polyfill for now.
+ */
+
+if (!Array.isArray) {
+  Array.isArray = function(arr){
+    return '[object Array]' == Object.prototype.toString.call(arr);
+  };
+}
+
+/**
+ * Lame Object.keys() polyfill for now.
+ */
+
+if (!Object.keys) {
+  Object.keys = function(obj){
+    var arr = [];
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        arr.push(key);
+      }
+    }
+    return arr;
+  }
+}
+
+/**
+ * Merge two attribute objects giving precedence
+ * to values in object `b`. Classes are special-cased
+ * allowing for arrays and merging/joining appropriately
+ * resulting in a string.
+ *
+ * @param {Object} a
+ * @param {Object} b
+ * @return {Object} a
+ * @api private
+ */
+
+exports.merge = function merge(a, b) {
+  var ac = a['class'];
+  var bc = b['class'];
+
+  if (ac || bc) {
+    ac = ac || [];
+    bc = bc || [];
+    if (!Array.isArray(ac)) ac = [ac];
+    if (!Array.isArray(bc)) bc = [bc];
+    a['class'] = ac.concat(bc).filter(nulls);
+  }
+
+  for (var key in b) {
+    if (key != 'class') {
+      a[key] = b[key];
+    }
+  }
+
+  return a;
+};
+
+/**
+ * Filter null `val`s.
+ *
+ * @param {*} val
+ * @return {Boolean}
+ * @api private
+ */
+
+function nulls(val) {
+  return val != null && val !== '';
+}
+
+/**
+ * join array as classes.
+ *
+ * @param {*} val
+ * @return {String}
+ * @api private
+ */
+
+function joinClasses(val) {
+  return Array.isArray(val) ? val.map(joinClasses).filter(nulls).join(' ') : val;
+}
+
+/**
+ * Render the given attributes object.
+ *
+ * @param {Object} obj
+ * @param {Object} escaped
+ * @return {String}
+ * @api private
+ */
+
+exports.attrs = function attrs(obj, escaped){
+  var buf = []
+    , terse = obj.terse;
+
+  delete obj.terse;
+  var keys = Object.keys(obj)
+    , len = keys.length;
+
+  if (len) {
+    buf.push('');
+    for (var i = 0; i < len; ++i) {
+      var key = keys[i]
+        , val = obj[key];
+
+      if ('boolean' == typeof val || null == val) {
+        if (val) {
+          terse
+            ? buf.push(key)
+            : buf.push(key + '="' + key + '"');
+        }
+      } else if (0 == key.indexOf('data') && 'string' != typeof val) {
+        buf.push(key + "='" + JSON.stringify(val) + "'");
+      } else if ('class' == key) {
+        if (escaped && escaped[key]){
+          if (val = exports.escape(joinClasses(val))) {
+            buf.push(key + '="' + val + '"');
+          }
+        } else {
+          if (val = joinClasses(val)) {
+            buf.push(key + '="' + val + '"');
+          }
+        }
+      } else if (escaped && escaped[key]) {
+        buf.push(key + '="' + exports.escape(val) + '"');
+      } else {
+        buf.push(key + '="' + val + '"');
+      }
+    }
+  }
+
+  return buf.join(' ');
+};
+
+/**
+ * Escape the given string of `html`.
+ *
+ * @param {String} html
+ * @return {String}
+ * @api private
+ */
+
+exports.escape = function escape(html){
+  return String(html)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+};
+
+/**
+ * Re-throw the given `err` in context to the
+ * the jade in `filename` at the given `lineno`.
+ *
+ * @param {Error} err
+ * @param {String} filename
+ * @param {String} lineno
+ * @api private
+ */
+
+exports.rethrow = function rethrow(err, filename, lineno, str){
+  if (!(err instanceof Error)) throw err;
+  if ((typeof window != 'undefined' || !filename) && !str) {
+    err.message += ' on line ' + lineno;
+    throw err;
+  }
+  try {
+    str =  str || require('fs').readFileSync(filename, 'utf8')
+  } catch (ex) {
+    rethrow(err, null, lineno)
+  }
+  var context = 3
+    , lines = str.split('\n')
+    , start = Math.max(lineno - context, 0)
+    , end = Math.min(lines.length, lineno + context);
+
+  // Error context
+  var context = lines.slice(start, end).map(function(line, i){
+    var curr = i + start + 1;
+    return (curr == lineno ? '  > ' : '    ')
+      + curr
+      + '| '
+      + line;
+  }).join('\n');
+
+  // Alter exception message
+  err.path = filename;
+  err.message = (filename || 'Jade') + ':' + lineno
+    + '\n' + context + '\n\n' + err.message;
+  throw err;
+};
+
+},{"fs":2}],2:[function(require,module,exports){
+// nothing to see here... no file methods for the browser
+
+},{}]},{},[1])(1)
+});
+;
 
 /**
  * @preserve FastClick: polyfill to remove click delays on browsers with touch UIs.
@@ -1370,212 +1609,4 @@ if (typeof define !== 'undefined' && define.amd) {
   window.FastClick = FastClick;
 }
 
-;(function(e){if("function"==typeof bootstrap)bootstrap("jade",e);else if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else if("undefined"!=typeof ses){if(!ses.ok())return;ses.makeJade=e}else"undefined"!=typeof window?window.jade=e():global.jade=e()})(function(){var define,ses,bootstrap,module,exports;
-return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-
-/*!
- * Jade - runtime
- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
- * MIT Licensed
- */
-
-/**
- * Lame Array.isArray() polyfill for now.
- */
-
-if (!Array.isArray) {
-  Array.isArray = function(arr){
-    return '[object Array]' == Object.prototype.toString.call(arr);
-  };
-}
-
-/**
- * Lame Object.keys() polyfill for now.
- */
-
-if (!Object.keys) {
-  Object.keys = function(obj){
-    var arr = [];
-    for (var key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        arr.push(key);
-      }
-    }
-    return arr;
-  }
-}
-
-/**
- * Merge two attribute objects giving precedence
- * to values in object `b`. Classes are special-cased
- * allowing for arrays and merging/joining appropriately
- * resulting in a string.
- *
- * @param {Object} a
- * @param {Object} b
- * @return {Object} a
- * @api private
- */
-
-exports.merge = function merge(a, b) {
-  var ac = a['class'];
-  var bc = b['class'];
-
-  if (ac || bc) {
-    ac = ac || [];
-    bc = bc || [];
-    if (!Array.isArray(ac)) ac = [ac];
-    if (!Array.isArray(bc)) bc = [bc];
-    a['class'] = ac.concat(bc).filter(nulls);
-  }
-
-  for (var key in b) {
-    if (key != 'class') {
-      a[key] = b[key];
-    }
-  }
-
-  return a;
-};
-
-/**
- * Filter null `val`s.
- *
- * @param {*} val
- * @return {Boolean}
- * @api private
- */
-
-function nulls(val) {
-  return val != null && val !== '';
-}
-
-/**
- * join array as classes.
- *
- * @param {*} val
- * @return {String}
- * @api private
- */
-
-function joinClasses(val) {
-  return Array.isArray(val) ? val.map(joinClasses).filter(nulls).join(' ') : val;
-}
-
-/**
- * Render the given attributes object.
- *
- * @param {Object} obj
- * @param {Object} escaped
- * @return {String}
- * @api private
- */
-
-exports.attrs = function attrs(obj, escaped){
-  var buf = []
-    , terse = obj.terse;
-
-  delete obj.terse;
-  var keys = Object.keys(obj)
-    , len = keys.length;
-
-  if (len) {
-    buf.push('');
-    for (var i = 0; i < len; ++i) {
-      var key = keys[i]
-        , val = obj[key];
-
-      if ('boolean' == typeof val || null == val) {
-        if (val) {
-          terse
-            ? buf.push(key)
-            : buf.push(key + '="' + key + '"');
-        }
-      } else if (0 == key.indexOf('data') && 'string' != typeof val) {
-        buf.push(key + "='" + JSON.stringify(val) + "'");
-      } else if ('class' == key) {
-        if (escaped && escaped[key]){
-          if (val = exports.escape(joinClasses(val))) {
-            buf.push(key + '="' + val + '"');
-          }
-        } else {
-          if (val = joinClasses(val)) {
-            buf.push(key + '="' + val + '"');
-          }
-        }
-      } else if (escaped && escaped[key]) {
-        buf.push(key + '="' + exports.escape(val) + '"');
-      } else {
-        buf.push(key + '="' + val + '"');
-      }
-    }
-  }
-
-  return buf.join(' ');
-};
-
-/**
- * Escape the given string of `html`.
- *
- * @param {String} html
- * @return {String}
- * @api private
- */
-
-exports.escape = function escape(html){
-  return String(html)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-};
-
-/**
- * Re-throw the given `err` in context to the
- * the jade in `filename` at the given `lineno`.
- *
- * @param {Error} err
- * @param {String} filename
- * @param {String} lineno
- * @api private
- */
-
-exports.rethrow = function rethrow(err, filename, lineno, str){
-  if (!(err instanceof Error)) throw err;
-  if ((typeof window != 'undefined' || !filename) && !str) {
-    err.message += ' on line ' + lineno;
-    throw err;
-  }
-  try {
-    str =  str || require('fs').readFileSync(filename, 'utf8')
-  } catch (ex) {
-    rethrow(err, null, lineno)
-  }
-  var context = 3
-    , lines = str.split('\n')
-    , start = Math.max(lineno - context, 0)
-    , end = Math.min(lines.length, lineno + context);
-
-  // Error context
-  var context = lines.slice(start, end).map(function(line, i){
-    var curr = i + start + 1;
-    return (curr == lineno ? '  > ' : '    ')
-      + curr
-      + '| '
-      + line;
-  }).join('\n');
-
-  // Alter exception message
-  err.path = filename;
-  err.message = (filename || 'Jade') + ':' + lineno
-    + '\n' + context + '\n\n' + err.message;
-  throw err;
-};
-
-},{"fs":2}],2:[function(require,module,exports){
-// nothing to see here... no file methods for the browser
-
-},{}]},{},[1])(1)
-});
 ;
-

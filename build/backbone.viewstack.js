@@ -1,4 +1,4 @@
-/* backbone.viewstack - v0.9.3 - MIT */
+/* backbone.viewstack - v0.9.4 - MIT */
 /* Manage views & transitions in Backbone without the boilerplate */
 /* https://github.com/Creative-Licence-Digital/backbone.viewstack */
 var __hasProp = {}.hasOwnProperty,
@@ -25,7 +25,9 @@ var __hasProp = {}.hasOwnProperty,
       headClass: ".view-head",
       bodyClass: ".view-body",
       ms: 300,
-      overwrite: true
+      overwrite: true,
+      slideStartPosition: 40,
+      slideCompletionRatio: 0.5
     };
 
     ViewStack.prototype.el = "#views";
@@ -106,6 +108,10 @@ var __hasProp = {}.hasOwnProperty,
       }
     };
 
+    ViewStack.prototype.getCurrentView = function() {
+      return _.last(this.stack);
+    };
+
     ViewStack.prototype.show = function(name, options) {
       var i, isPush, key, nextView, prevView, view, viewClass, _i, _len, _name, _ref, _ref1;
       if (options == null) {
@@ -133,44 +139,46 @@ var __hasProp = {}.hasOwnProperty,
           }
         }
       }
-      if (typeof nextView.show === "function") {
-        nextView.show(options);
-      }
-      prevView = this.stack[this.stack.length - 1];
-      isPush = this.stack.indexOf(nextView) < 0;
-      if ((prevView != null ? (_ref1 = prevView.stack) != null ? _ref1.indexOf(name) : void 0 : void 0) > -1) {
-        isPush = false;
-      }
-      if (options.isDialog) {
-        this.willShowDialog = true;
-      }
-      if (options.transition) {
-        this.undelegateEvents();
+      if (nextView.__key !== ((options != null ? options.key : void 0) || viewName)) {
+        prevView = this.stack[this.stack.length - 1];
+        isPush = this.stack.indexOf(nextView) < 0;
+        if ((prevView != null ? (_ref1 = prevView.stack) != null ? _ref1.indexOf(name) : void 0 : void 0) > -1) {
+          isPush = false;
+        }
+        if (options.isDialog) {
+          this.willShowDialog = true;
+        }
+        if (options.transition) {
+          this.undelegateEvents();
+        } else {
+          this.delegateEvents();
+        }
+        if (options.transition) {
+          this.willCustomPush = true;
+          this.transform = this["" + options.transition + "Transform"];
+        } else if (!this.willCustomPush) {
+          this.willCustomPush = false;
+          this.transform = this.slideTransform;
+        }
+        if (isPush || this.stack.length === 0 && !this.preventTransition) {
+          return this.pushView(nextView);
+        } else {
+          if (this.willShowDialog) {
+            prevView = this.removeDialog(nextView) || prevView;
+          }
+          this.stack = this.stack.slice(0, this.stack.indexOf(nextView) + 1).concat(prevView);
+          if (this.stack.length === 1) {
+            this.stack.unshift(nextView);
+          }
+          this.popView();
+          this.willHideDialog = false;
+          if (!options.transition) {
+            this.willCustomPush = false;
+          }
+          return this.trigger("show", nextView, options);
+        }
       } else {
-        this.delegateEvents();
-      }
-      if (options.transition) {
-        this.willCustomPush = true;
-        this.transform = this["" + options.transition + "Transform"];
-      } else if (!this.willCustomPush) {
-        this.willCustomPush = false;
-        this.transform = this.slideTransform;
-      }
-      if (isPush || this.stack.length === 0 && !this.preventTransition) {
-        return this.pushView(nextView);
-      } else {
-        if (this.willShowDialog) {
-          prevView = this.removeDialog(nextView) || prevView;
-        }
-        this.stack = this.stack.slice(0, this.stack.indexOf(nextView) + 1).concat(prevView);
-        if (this.stack.length === 1) {
-          this.stack.unshift(nextView);
-        }
-        this.popView();
-        this.willHideDialog = false;
-        if (!options.transition) {
-          return this.willCustomPush = false;
-        }
+        return typeof nextView.show === "function" ? nextView.show(options) : void 0;
       }
     };
 
@@ -290,8 +298,7 @@ var __hasProp = {}.hasOwnProperty,
       if (this.offset == null) {
         this.offset = this.$el.offset();
       }
-      this.hasSlid = false;
-      if (_e.pageX - this.offset.left < 40) {
+      if (_e.pageX - this.offset.left < this.slideStartPosition) {
         if (inPrevStack) {
           index = prevView.stack.indexOf(prevView.__key) - 1;
           nextView = this.views[prevView.stack[index]];
@@ -308,7 +315,8 @@ var __hasProp = {}.hasOwnProperty,
           startX: _e.pageX - this.offset.left,
           startY: _e.pageY,
           prev: prevView,
-          next: nextView
+          next: nextView,
+          hasSlid: false
         };
         return this.onMove(e);
       }
@@ -323,10 +331,10 @@ var __hasProp = {}.hasOwnProperty,
         e.preventDefault();
       }
       _e = isTouch ? e.touches[0] : e;
-      if (!this.hasSlid) {
+      if (!this.slide.hasSlid) {
         if (Math.abs(_e.pageX - this.offset.left - this.slide.startX) > 10) {
           window.clearTimeout(this.transitionOutTimeout);
-          this.hasSlid = true;
+          this.slide.hasSlid = true;
           this.slide.prev.undelegateEvents();
           this.slide.next.undelegateEvents();
           this.transitionView(this.slide.prev, false);
@@ -334,11 +342,12 @@ var __hasProp = {}.hasOwnProperty,
           this.transform = this.slideTransform;
           this.slide.next.$el.show();
           this.slide.prev.$el.show();
+          this.trigger("slidestart");
         } else if (Math.abs(_e.pageY - this.slide.startY) > 20) {
           this.onEnd();
         }
       }
-      if (this.hasSlid) {
+      if (this.slide.hasSlid) {
         e.stopPropagation();
         this.slide.ratio = Math.min(Math.max((_e.pageX - this.offset.left - this.slide.startX) / this.offset.width, 0), 1);
         this.transform(this.slide.prev, this.slide.ratio, true);
@@ -353,11 +362,11 @@ var __hasProp = {}.hasOwnProperty,
       }
       this.transitionView(this.slide.prev, true);
       this.transitionView(this.slide.next, true);
-      if (this.hasSlid) {
+      if (this.slide.hasSlid) {
         e.stopPropagation();
         next = this.slide.next;
         prev = this.slide.prev;
-        if (this.slide.ratio > 0.5) {
+        if (this.slide.ratio > this.slideCompletionRatio) {
           this.transform(prev, this.endRatio(true), true);
           this.transform(next, 0, true);
           this.preventTransition = true;
@@ -380,6 +389,7 @@ var __hasProp = {}.hasOwnProperty,
           this.cleanup(this.slide.prev.$el);
           prev.delegateEvents();
         }
+        this.trigger("slideend");
       }
       return this.slide = null;
     };

@@ -1,5 +1,5 @@
 ---
-version: 0.9.3
+version: 0.9.4
 ---
 
 ## backbone.viewstack.js
@@ -54,8 +54,10 @@ var myAppRouter = Backbone.Router.extend({
       isLinear: true,           // optional
       el: "#views",             // optional selector/element for parent
       headClass: ".view-head",  // optional selector for view's nav bar
-      bodyClass: ".view-body"   // optional selector for view's content
-      overwrite: true           // optionally replace the element's content
+      bodyClass: ".view-body",  // optional selector for view's content
+      overwrite: true,          // optionally replace the element's content
+      slideStartPosition: 40,   // optionally set max X position for sliding
+      slideCompletionRatio: 0.5 // optionally set ratio for slide completion
     })
   }
 });
@@ -111,6 +113,8 @@ Views that don't already have and `open` or `exit` method will be given one. `op
 ### Swipe to go back
 
 If your app can be loaded on views part way down the stack, you can declare a stack array in the view that is being shown. There is a caveat, though. The viewstack defaults to `window.history.back()` when swiping to go back, but this will not work when there is no history. Apps that could load part way down the stack should pass `isLinear: false` when initializing the stack and manage the router's navigation in the `show` method of each view. See the [demo](http://creative-licence-digital.github.io/backbone.viewstack/demo/public/) for an example of this. You can also prevent swiping by setting `preventPop: true` on the view in question.
+
+A `slidestart` and `slideend` event are triggered on the view stack during slide navigation.
 
 ### Event management
 
