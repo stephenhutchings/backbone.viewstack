@@ -317,7 +317,7 @@ do ->
           @trigger("slidestart")
 
         else if Math.abs(_e.pageY - @slide.startY) > 20
-          @onEnd()
+          return @onEnd()
 
       if @slide.hasSlid
         e.stopPropagation()
