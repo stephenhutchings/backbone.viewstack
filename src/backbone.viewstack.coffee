@@ -98,6 +98,7 @@ do ->
 
       if @views[key]?
         nextView = @views[key]
+        nextView.show?(options)
       else
         viewClass = require @viewPath + name
         nextView = @create name, viewClass, options
@@ -152,10 +153,6 @@ do ->
           @willCustomPush = false unless options.transition
 
         @trigger("show", nextView, options)
-
-      else
-        nextView.show?(options)
-        nextView.delegateEvents().$el.show().addClass("active")
 
     # Get the last view in the stack, push the new view and activate it.
     pushView: (view) ->
