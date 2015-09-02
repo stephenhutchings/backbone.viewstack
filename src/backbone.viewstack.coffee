@@ -5,6 +5,16 @@ do ->
   unless Backbone
     console?.error "Ensure Backbone is included before backbone.viewstack"
 
+  ease = (time, intensity = 2) ->
+    if time is 0
+      return 0
+    else if time is 1
+      return 1
+    else if (time = time/(0.5)) < 1
+      return 0.5 * Math.pow(2, intensity*(time-1))
+    else
+      0.5*(-Math.pow(2,-intensity*(time-1))+2)
+
   class Backbone.ViewStack extends Backbone.View
 
     defaults:
@@ -399,7 +409,7 @@ do ->
           "opacity": if not isPush then 1 + ratio else 1
 
         view.__head.css
-          "opacity": if isPush then 1 - ratio else 1
+          "opacity": if isPush then 1 - ease(ratio, 8) else 1
 
     # Scale both views down, the view on top ending at 100%.
     zoomTransform: (view, ratio, isPush) ->
@@ -412,19 +422,19 @@ do ->
           "-ms-transform": transform
           "-o-transform": transform
           "transform": transform
-          "opacity": if isPush then 1 - ratio else 1
+          "opacity": if isPush then 1 - ease(ratio) else 1
 
         view.__head.css
-          "opacity": if isPush then 1 - ratio else 1
+          "opacity": if isPush then 1 - ease(ratio) else 1
 
     # Simply fade the new view in over the preceding view
     fadeTransform: (view, ratio, isPush) ->
       if view
         view.__body.css
-          "opacity": if isPush then 1 - ratio else 1
+          "opacity": if isPush then 1 - ease(ratio) else 1
 
         view.__head.css
-          "opacity": if isPush then 1 - ratio else 1
+          "opacity": if isPush then 1 - ease(ratio) else 1
 
     # Remove any transforms set during transitions
     clearTransforms: (view) ->
