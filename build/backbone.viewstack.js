@@ -1,4 +1,4 @@
-/* backbone.viewstack - v0.9.7 - MIT */
+/* backbone.viewstack - v0.9.8 - MIT */
 /* Manage views & transitions in Backbone without the boilerplate */
 /* https://github.com/Creative-Licence-Digital/backbone.viewstack */
 var __hasProp = {}.hasOwnProperty,
@@ -6,13 +6,27 @@ var __hasProp = {}.hasOwnProperty,
 
 (function() {
   "use strict";
-  var isTouch;
+  var ease, isTouch;
   isTouch = "ontouchstart" in window;
   if (!Backbone) {
     if (typeof console !== "undefined" && console !== null) {
       console.error("Ensure Backbone is included before backbone.viewstack");
     }
   }
+  ease = function(time, intensity) {
+    if (intensity == null) {
+      intensity = 2;
+    }
+    if (time === 0) {
+      return 0;
+    } else if (time === 1) {
+      return 1;
+    } else if ((time = time / 0.5) < 1) {
+      return 0.5 * Math.pow(2, intensity * (time - 1));
+    } else {
+      return 0.5 * (-Math.pow(2, -intensity * (time - 1)) + 2);
+    }
+  };
   return Backbone.ViewStack = (function(_super) {
     __extends(ViewStack, _super);
 
@@ -121,6 +135,9 @@ var __hasProp = {}.hasOwnProperty,
       prevView = this.stack[this.stack.length - 1];
       if (this.views[key] != null) {
         nextView = this.views[key];
+        if (typeof nextView.show === "function") {
+          nextView.show(options);
+        }
       } else {
         viewClass = require(this.viewPath + name);
         nextView = this.create(name, viewClass, options);
@@ -177,11 +194,6 @@ var __hasProp = {}.hasOwnProperty,
           }
         }
         return this.trigger("show", nextView, options);
-      } else {
-        if (typeof nextView.show === "function") {
-          nextView.show(options);
-        }
-        return nextView.delegateEvents().$el.show().addClass("active");
       }
     };
 
@@ -286,7 +298,9 @@ var __hasProp = {}.hasOwnProperty,
       events[isTouch ? "touchstart" : "mousedown"] = "onStart";
       events[isTouch ? "touchmove" : "mousemove"] = "onMove";
       events[isTouch ? "touchend" : "mouseup"] = "onEnd";
-      events[isTouch ? "touchcancel" : "mouseleave"] = "onEnd";
+      if (isTouch) {
+        events["touchcancel"] = "onEnd";
+      }
       return events;
     };
 
@@ -347,7 +361,7 @@ var __hasProp = {}.hasOwnProperty,
           this.slide.prev.$el.show();
           this.trigger("slidestart");
         } else if (Math.abs(_e.pageY - this.slide.startY) > 20) {
-          this.onEnd();
+          return this.onEnd();
         }
       }
       if (this.slide.hasSlid) {
@@ -422,7 +436,7 @@ var __hasProp = {}.hasOwnProperty,
           "opacity": !isPush ? 1 + ratio : 1
         });
         return view.__head.css({
-          "opacity": isPush ? 1 - ratio : 1
+          "opacity": isPush ? 1 - ease(ratio, 8) : 1
         });
       }
     };
@@ -437,10 +451,10 @@ var __hasProp = {}.hasOwnProperty,
           "-ms-transform": transform,
           "-o-transform": transform,
           "transform": transform,
-          "opacity": isPush ? 1 - ratio : 1
+          "opacity": isPush ? 1 - ease(ratio) : 1
         });
         return view.__head.css({
-          "opacity": isPush ? 1 - ratio : 1
+          "opacity": isPush ? 1 - ease(ratio) : 1
         });
       }
     };
@@ -448,10 +462,10 @@ var __hasProp = {}.hasOwnProperty,
     ViewStack.prototype.fadeTransform = function(view, ratio, isPush) {
       if (view) {
         view.__body.css({
-          "opacity": isPush ? 1 - ratio : 1
+          "opacity": isPush ? 1 - ease(ratio) : 1
         });
         return view.__head.css({
-          "opacity": isPush ? 1 - ratio : 1
+          "opacity": isPush ? 1 - ease(ratio) : 1
         });
       }
     };
