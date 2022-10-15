@@ -8,12 +8,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Creative-Licence-Digital/backbone.viewstack"
+    "url": "https://github.com/stephenhutchings/backbone.viewstack"
   },
-  "author": "Creative Licence Digital",
+  "author": "Stephen Hutchings",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Creative-Licence-Digital/backbone.viewstack/issues"
+    "url": "https://github.com/stephenhutchings/backbone.viewstack/issues"
   },
   "dependencies": {
     "flour": "~0.5.6",
